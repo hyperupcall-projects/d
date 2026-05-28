@@ -122,7 +122,7 @@ Deployment *getDefaultDeployment() {
 In summary, each item corresponds to some application and can have multiple dotfile files or directories. Items can be grouped together using a group item, or listed directly under a deployment. You must write `getDeployments()` and `getDefaultDeployment()` so `d` can see and use the deployments that you have.
 
 The really cool part about this, is that you can use macros! This is your chance to be creative! See
-[my dotfiles.c](https://github.com/hyperupcall/dotfiles/blob/trunk/os-unix/data/dotfiles.c) for inspiration.
+[my dotfiles.c](https://github.com/hyperupcall/dotfiles/blob/trunk/config/dotfiles.c) for inspiration.
 
 Now, you can use `d` like any other dotfile manager:
 
