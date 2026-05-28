@@ -2,6 +2,7 @@
 #include <sys/sendfile.h>
 #define _GNU_SOURCE
 
+#include "d.h"
 #include <dlfcn.h>
 #include <errno.h>
 #include <libgen.h>
@@ -15,7 +16,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "d.h"
 
 void error(const char *message) {
 #define RED "\033[0;31m"
@@ -23,8 +23,7 @@ void error(const char *message) {
 	fprintf(stderr, RED "%s" RESET "\n", message);
 }
 
-__attribute__((noreturn))
-void fail(const char *message) {
+__attribute__((noreturn)) void fail(const char *message) {
 	error(message);
 	exit(EXIT_FAILURE);
 }
@@ -41,7 +40,7 @@ int main(int argc, char *argv[]) {
 	char *config_filename = NULL;
 	char *so_file = NULL;
 	char *cmd = NULL;
-	char *group_name = NULL;
+	char *deployment_name = NULL;
 	void *handle = NULL;
 
 	if (getenv("DEBUG") != NULL) {
@@ -49,7 +48,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	char *help_menu = "d: A dotfile manager.\n"
-	                  "Commands: <deploy[ --group=* --dry] | undeploy[ --group=* --dry] | print>\n";
+	                  "Commands: <deploy[ --deployment=* --dry] | undeploy[ --deployment=* --dry] | print>\n";
 
 	enum Command {
 		CommandNone,
@@ -80,8 +79,8 @@ int main(int argc, char *argv[]) {
 				is_dry_run = true;
 			}
 
-			if (strncmp(argv[i], "--group=", 8) == 0) {
-				group_name = argv[i] + 8;
+			if (strncmp(argv[i], "--deployment=", 13) == 0) {
+				deployment_name = argv[i] + 13;
 			}
 		}
 	}
@@ -119,9 +118,10 @@ int main(int argc, char *argv[]) {
 		goto error;
 	}
 
-
-	if (asprintf(&cmd, "gcc -g -fPIC -c %s -DCONFIG_HOME=\"\\\"$HOME\\\"\" -o %s/%s.o && gcc -shared -o %s/libdotfiles.so %s/%s.o",
-	             config_file, config_dir, config_filename, config_dir, config_dir, config_filename) == -1) {
+	if (asprintf(
+	        &cmd,
+	        "gcc -g -fPIC -c %s -DCONFIG_HOME=\"\\\"$HOME\\\"\" -o %s/%s.o && gcc -shared -o %s/libdotfiles.so %s/%s.o",
+	        config_file, config_dir, config_filename, config_dir, config_dir, config_filename) == -1) {
 		error("Failed to create compilation command");
 		goto error;
 	}
@@ -145,38 +145,38 @@ int main(int argc, char *argv[]) {
 	}
 	dlerror();
 
-	Group **(*getGroups)(void) = (Group **(*)(void))dlsym(handle, "getGroups");
+	Deployment **(*getDeployments)(void) = (Deployment * *(*)(void)) dlsym(handle, "getDeployments");
 	char *dl_error = dlerror();
 	if (dl_error != NULL) {
 		fprintf(stderr, "%s\n", dl_error);
 		goto error;
 	}
 
-	Group *(*getDefaultGroup)(void) = (Group *(*)(void))dlsym(handle, "getDefaultGroup");
+	Deployment *(*getDefaultDeployment)(void) = (Deployment * (*)(void)) dlsym(handle, "getDefaultDeployment");
 	dl_error = dlerror();
 	if (dl_error != NULL) {
 		fprintf(stderr, "%s\n", dl_error);
 		goto error;
 	}
 
-	Group **groups = getGroups();
+	Deployment **groups = getDeployments();
 	if (groups == NULL) {
-		fprintf(stderr, "Failed to get groups\n");
+		fprintf(stderr, "Failed to get deployments\n");
 		goto error;
 	}
 
-	Group *current_group = NULL;
-	if (group_name == NULL) {
-		current_group = getDefaultGroup();
+	Deployment *current_group = NULL;
+	if (deployment_name == NULL) {
+		current_group = getDefaultDeployment();
 	} else {
 		for (int i = 0; groups[i] != NULL; i++) {
-			if (strcmp(groups[i]->name, group_name) == 0) {
+			if (strcmp(groups[i]->name, deployment_name) == 0) {
 				current_group = groups[i];
 				break;
 			}
 		}
 		if (current_group == NULL) {
-			fprintf(stderr, "Group '%s' not found\n", group_name);
+			fprintf(stderr, "Deployment '%s' not found\n", deployment_name);
 			goto error;
 		}
 	}
@@ -189,22 +189,19 @@ int main(int argc, char *argv[]) {
 	if (command == CommandPrint)
 		printf("[\n");
 	for (int i = 0;; i += 1) {
-		Entry *entrygroup = current_group->entries[i];
-		if (entrygroup == NULL) {
+		Entry *entrydeployment = current_group->entries[i];
+		if (entrydeployment == NULL) {
 			break;
 		}
 
 		for (int j = 0;; j += 1) {
-			Entry entry = entrygroup[j];
+			Entry entry = entrydeployment[j];
 			if (entry.source == NULL && entry.destination == NULL) {
 				break;
 			}
 
 			if (command == CommandPrint) {
-				printf(
-				    "\t{ \"source\": \"%s\", \"destination\": \"%s\" }", entry.source,
-				    entry.destination
-				);
+				printf("\t{ \"source\": \"%s\", \"destination\": \"%s\" }", entry.source, entry.destination);
 				if (current_group->entries[i + 1] == NULL) {
 					printf("\n");
 				} else {
@@ -250,12 +247,18 @@ int main(int argc, char *argv[]) {
 		printf("]\n");
 
 error:
-	if (handle) dlclose(handle);
-	if (so_file) free(so_file);
-	if (config_file) free(config_file);
-	if (config_file2) free(config_file2);
-	if (config_file3) free(config_file3);
-	if (cmd) free(cmd);
+	if (handle)
+		dlclose(handle);
+	if (so_file)
+		free(so_file);
+	if (config_file)
+		free(config_file);
+	if (config_file2)
+		free(config_file2);
+	if (config_file3)
+		free(config_file3);
+	if (cmd)
+		free(cmd);
 	exit(1);
 }
 
@@ -268,9 +271,8 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 	{
 		if (destination_path[strlen(destination_path) - 1] == '/') {
 			if (source_path[strlen(source_path) - 1] != '/') {
-				fprintf(
-				    stderr, "Error: If destination path does have trailing slash, then source path must have it too.\n"
-				);
+				fprintf(stderr,
+				        "Error: If destination path does have trailing slash, then source path must have it too.\n");
 				exit(1);
 			}
 
@@ -280,8 +282,7 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 			if (source_path[strlen(source_path) - 1] == '/') {
 				fprintf(
 				    stderr,
-				    "Error: If destination path does not have trailing slash, then source path must not have it either.\n"
-				);
+				    "Error: If destination path does not have trailing slash, then source path must not have it either.\n");
 				exit(1);
 			}
 		}
@@ -338,8 +339,7 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 	error:
 		free(dir);
 		exit(1);
-	end:
-		;
+	end:;
 	}
 
 	struct stat st = {0};

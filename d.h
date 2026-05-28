@@ -1,10 +1,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-typedef struct Group {
+typedef struct Deployment {
 	char const *name;
 	struct Entry **entries;
-} Group;
+} Deployment;
 
 typedef struct Entry {
 	char const *category;
@@ -31,6 +31,6 @@ typedef struct Entry {
 }
 // clang-format on
 
-#define HomeEntry(path, category) { Home(path, category), Done }
-#define ConfigEntry(path, category) { Config(path, category), Done }
-#define DataEntry(path, category) { Data(path, category), Done }
+#define HomeEntry(path, category) {Home(path, category), Done}
+#define ConfigEntry(path, category) {Config(path, category), Done}
+#define DataEntry(path, category) {Data(path, category), Done}
