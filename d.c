@@ -34,10 +34,9 @@ int main(int argc, char *argv[]) {
 	static bool is_dry_run = false;
 
 	char *config_file = NULL;
-	char *config_dir = NULL;
-	char *config_file2 = NULL;
 	char *config_file3 = NULL;
 	char *config_filename = NULL;
+	char *cache_dir = NULL;
 	char *so_file = NULL;
 	char *cmd = NULL;
 	char *deployment_name = NULL;
@@ -90,17 +89,11 @@ int main(int argc, char *argv[]) {
 		error("Failed to copy config path");
 		goto error;
 	}
-	config_file2 = strdup(config_file);
-	if (config_file2 == NULL) {
-		error("Failed to copy config path");
-		goto error;
-	}
 	config_file3 = strdup(config_file);
 	if (config_file3 == NULL) {
 		error("Failed to copy config path");
 		goto error;
 	}
-	config_dir = dirname(config_file2);
 	config_filename = basename(config_file3);
 
 	struct stat st;
@@ -113,15 +106,36 @@ int main(int argc, char *argv[]) {
 		goto error;
 	}
 
-	if (asprintf(&so_file, "%s/libdotfiles.so", config_dir) == -1) {
+	const char *xdg_cache = getenv("XDG_CACHE_HOME");
+	if (xdg_cache != NULL && xdg_cache[0] != '\0') {
+		cache_dir = strdup(xdg_cache);
+		if (cache_dir == NULL) {
+			error("Failed to copy XDG_CACHE_HOME");
+			goto error;
+		}
+	} else {
+		const char *home = getenv("HOME");
+		if (home == NULL) {
+			error("HOME is not set");
+			goto error;
+		}
+		if (asprintf(&cache_dir, "%s/.cache", home) == -1) {
+			error("Failed to create cache dir path");
+			goto error;
+		}
+	}
+	if (mkdir(cache_dir, 0700) == -1 && errno != EEXIST) {
+		perror("Failed to create cache directory");
+		goto error;
+	}
+
+	if (asprintf(&so_file, "%s/libdotfiles.so", cache_dir) == -1) {
 		error("Failed to create library path");
 		goto error;
 	}
 
-	if (asprintf(
-	        &cmd,
-	        "gcc -g -fPIC -c %s -DCONFIG_HOME=\"\\\"$HOME\\\"\" -o %s/%s.o && gcc -shared -o %s/libdotfiles.so %s/%s.o",
-	        config_file, config_dir, config_filename, config_dir, config_dir, config_filename) == -1) {
+	if (asprintf(&cmd, "gcc -g -fPIC -c %s -DCONFIG_HOME=\"\\\"$HOME\\\"\" -o %s/%s.o && gcc -shared -o %s %s/%s.o",
+	             config_file, cache_dir, config_filename, so_file, cache_dir, config_filename) == -1) {
 		error("Failed to create compilation command");
 		goto error;
 	}
@@ -247,12 +261,12 @@ int main(int argc, char *argv[]) {
 error:
 	if (handle)
 		dlclose(handle);
+	if (cache_dir)
+		free(cache_dir);
 	if (so_file)
 		free(so_file);
 	if (config_file)
 		free(config_file);
-	if (config_file2)
-		free(config_file2);
 	if (config_file3)
 		free(config_file3);
 	if (cmd)
