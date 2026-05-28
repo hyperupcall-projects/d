@@ -13,7 +13,7 @@ A dotfile manager.
 - NO "CONFIGURATION FILES" (THE CONCEPT OF "CONFIGURATION FILES" SHOULD NOT
   EXIST!)
 - NO "DOCUMENTATION" (WHAT IS THAT?)
-- NOT WRITTEN IN RUST (NO, I'M NOT INSANE!)
+- NOT WRITTEN IN RUST (NO, I'M NOT INSANE! I LOVE RUST!)
 
 ## Summary
 
@@ -24,7 +24,7 @@ preprocessor.
 ### Usage
 
 ```bash
-git clone git@github.com:hyperupcall-experiments/d
+git clone git@github.com:hyperupcall-projects/d
 cd ./d
 ./bake build "$HOME/.dotfiles/config/dotfiles.c"
 ln -s "$PWD/d" "$HOME/.local/bin/d"
