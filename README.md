@@ -26,8 +26,8 @@ preprocessor.
 ```bash
 git clone git@github.com:hyperupcall-projects/d
 cd ./d
-./bake build "$HOME/.dotfiles/config/dotfiles.c"
-ln -s "$PWD/d" "$HOME/.local/bin/d"
+./bake build ~/.dotfiles/config/dotfiles.c
+./bake install ~/.local
 ```
 
 Your `CONFIG_FILE` (see `Bakefile.sh`) should point to a `dotfiles.c` that looks something like:

@@ -12,9 +12,9 @@ task.build() {
 }
 
 task.install() {
-	local dest=${1:-/usr/local/bin}
-	sudo mkdir -p "$dest"
-	sudo cp ./d "$dest/d"
+	local prefix=${1:-/usr/local}
+	sudo mkdir -p "$prefix/bin"
+	sudo cp ./d "$prefix/bin/d"
 }
 
 task.run() {
