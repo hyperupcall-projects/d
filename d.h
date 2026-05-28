@@ -8,11 +8,11 @@ typedef enum {
 
 typedef struct Item {
 	int type;
-	// TYPE_ENTRY fields
+	// For TYPE_ENTRY.
 	char const *category;
 	char const *source;
 	char const *destination;
-	// TYPE_GROUP fields
+	// For TYPE_GROUP.
 	struct Item **entries;
 } Item;
 

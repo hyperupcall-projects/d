@@ -17,8 +17,7 @@ A dotfile manager.
 
 ## Summary
 
-On a more serious note, `d` is your standard dotfile manager, with the twist
-that it can be configured using C, hopefully leveraging the ~~cursed~~ amazing C
+On a more serious note, `d` is your standard dotfile manager, with the twist that it can be configured using C, hopefully leveraging the ~~cursed~~ amazing C
 preprocessor.
 
 ### Usage
@@ -30,14 +29,13 @@ cd ./d
 ./bake install ~/.local
 ```
 
-Your `CONFIG_FILE` (see `Bakefile.sh`) should point to a `dotfiles.c` that looks something like:
+Your should have a `dotfiles.c` that looks something like:
 
 ```c
 typedef enum {
 	TYPE_ENTRY = 0,
 	TYPE_GROUP = 1,
 } ItemType;
-
 typedef struct Item {
 	int type;
 	// Entry.
@@ -47,40 +45,38 @@ typedef struct Item {
 	// Group.
 	struct Item **entries;
 } Item;
-
 typedef struct Deployment {
 	char const *name;
 	Item **items;
 } Deployment;
-
-#define Done { .source = NULL, .destination = NULL }
-#define Home CONFIG_HOME
+#define Done { .type = TYPE_ENTRY, .source = NULL, .destination = NULL }
+#define Home CONFIG_HOME "/"
 
 // Each program has one or more entries.
 static Item bash[] = {
 	{
 		.type = TYPE_ENTRY,
-		.source = Home "/.dotfiles/.bashrc",
+		.source = Home ".dotfiles/.bashrc",
 		.destination = Home "/.bashrc"
 	},
 	{
 		.type = TYPE_ENTRY,
-		.source = Home "/.dotfiles/.bash_login",
-		.destination = Home "/.bash_login"
+		.source = Home ".dotfiles/.bash_login",
+		.destination = Home ".bash_login"
 	},
 	Done
 };
 static Item zsh[] = {
 	{
 		.type = TYPE_ENTRY,
-		.source = Home "/.dotfiles/.zshrc",
-		.destination = Home "/.zshrc"
+		.source = Home ".dotfiles/.zshrc",
+		.destination = Home ".zshrc"
 	},
 	Done
 };
 
-// It's possible to deploy a group of applications as a single unit.
-static Item shellsForServersGroup = {
+// Each entry can be grouped into a single deployable unit.
+static Item shellGroup = {
 	.type = TYPE_GROUP,
 	.entries = (Item *[]){
 		bash,
@@ -93,19 +89,19 @@ static Item shellsForServersGroup = {
 static Deployment deployment1 = {
 	.name = "Linux desktop",
 	.items = (Item *[]){
-		&shellsForServersGroup,
+		&shellGroup,
 		NULL
 	}
 };
 static Deployment deployment2 = {
-	.name = "Linux laptop",
+	.name = "Linux server",
 	.items = (Item *[]){
-		zsh,
+		// Linux server should not deploy any shell dotfiles.
 		NULL
 	}
 };
 
-// List all deployments and configure a default.
+// List all possible deployments and configure a default.
 static Deployment **deployments = (Deployment *[]){
 	&deployment1,
 	&deployment2,

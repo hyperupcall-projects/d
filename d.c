@@ -406,9 +406,6 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 		exists = false;
 	}
 
-	// TODO
-	// This is bad logic for when outside of home there is a file not symlink
-	// Also, shouldn't assume "home" is destination. They could have macro for that
 	if (exists && !S_ISLNK(st.st_mode)) {
 		printf("SKIPPING: %s\n", destination_path);
 		return;
@@ -429,6 +426,8 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 		fail("Failed to get home directory");
 	}
 
+	// If the destination path does not begin with the home directory,
+	// copy files instead of symlinking them.
 	if (strncmp(destination_path, home, strlen(home)) == 0) {
 		if (dry_run) {
 			printf("[DRY RUN] Would symlink %s to %s\n", source_path, destination_path);
