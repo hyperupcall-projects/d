@@ -1,6 +1,6 @@
+#define _GNU_SOURCE
 #include <fcntl.h>
 #include <sys/sendfile.h>
-#define _GNU_SOURCE
 
 #include "d.h"
 #include <dlfcn.h>
@@ -8,6 +8,7 @@
 #include <libgen.h>
 #include <linux/limits.h>
 #include <pwd.h>
+#include <spawn.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,6 +16,7 @@
 #include <sys/inotify.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 void error(const char *message) {
@@ -38,7 +40,6 @@ int main(int argc, char *argv[]) {
 	char *config_filename = NULL;
 	char *cache_dir = NULL;
 	char *so_file = NULL;
-	char *cmd = NULL;
 	char *deployment_name = NULL;
 	void *handle = NULL;
 
@@ -106,6 +107,11 @@ int main(int argc, char *argv[]) {
 		goto error;
 	}
 
+	const char *home = getenv("HOME");
+	if (home == NULL) {
+		error("HOME is not set");
+		goto error;
+	}
 	const char *xdg_cache = getenv("XDG_CACHE_HOME");
 	if (xdg_cache != NULL && xdg_cache[0] != '\0') {
 		cache_dir = strdup(xdg_cache);
@@ -114,11 +120,6 @@ int main(int argc, char *argv[]) {
 			goto error;
 		}
 	} else {
-		const char *home = getenv("HOME");
-		if (home == NULL) {
-			error("HOME is not set");
-			goto error;
-		}
 		if (asprintf(&cache_dir, "%s/.cache", home) == -1) {
 			error("Failed to create cache dir path");
 			goto error;
@@ -134,23 +135,53 @@ int main(int argc, char *argv[]) {
 		goto error;
 	}
 
-	if (asprintf(&cmd, "gcc -g -fPIC -c %s -DCONFIG_HOME=\"\\\"$HOME\\\"\" -o %s/%s.o && gcc -shared -o %s %s/%s.o",
-	             config_file, cache_dir, config_filename, so_file, cache_dir, config_filename) == -1) {
-		error("Failed to create compilation command");
+	char *obj_file = NULL;
+	if (asprintf(&obj_file, "%s/%s.o", cache_dir, config_filename) == -1) {
+		error("Failed to create object file path");
 		goto error;
 	}
 
-	// TODO
-	printf("Executing: %s\n", cmd);
-	int result = system(cmd);
-	if (result == -1) {
-		error("Failed to compile config");
-		goto error;
-	};
-	if (!WIFEXITED(result) || (WIFEXITED(result) && WEXITSTATUS(result) != 0)) {
-		error("Command failed to exit\n");
-		goto error;
+	{
+		char *config_home = NULL;
+		if (asprintf(&config_home, "-DCONFIG_HOME=\"%s\"", home) == -1) {
+			error("Failed to create CONFIG_HOME define");
+			free(obj_file);
+			goto error;
+		}
+
+		char *const compile_argv[] = {"gcc", "-g", "-fPIC", "-c", config_file, config_home, "-o", obj_file, NULL};
+		pid_t pid;
+		if (posix_spawnp(&pid, "gcc", NULL, NULL, compile_argv, environ) != 0) {
+			perror("gcc");
+			free(obj_file);
+			free(config_home);
+			goto error;
+		}
+		int status;
+		if (waitpid(pid, &status, 0) == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+			error("Compilation failed");
+			free(obj_file);
+			free(config_home);
+			goto error;
+		}
+		free(config_home);
 	}
+	{
+		char *const link_argv[] = {"gcc", "-shared", "-o", so_file, obj_file, NULL};
+		pid_t pid;
+		if (posix_spawnp(&pid, "gcc", NULL, NULL, link_argv, environ) != 0) {
+			perror("gcc");
+			free(obj_file);
+			goto error;
+		}
+		int status;
+		if (waitpid(pid, &status, 0) == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+			error("Linking failed");
+			free(obj_file);
+			goto error;
+		}
+	}
+	free(obj_file);
 
 	handle = dlopen(so_file, RTLD_LAZY);
 	if (handle == NULL) {
@@ -269,8 +300,7 @@ error:
 		free(config_file);
 	if (config_file3)
 		free(config_file3);
-	if (cmd)
-		free(cmd);
+
 	exit(1);
 }
 
