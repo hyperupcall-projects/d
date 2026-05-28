@@ -159,73 +159,71 @@ int main(int argc, char *argv[]) {
 		goto error;
 	}
 
-	Deployment **groups = getDeployments();
-	if (groups == NULL) {
+	Deployment **deployments = getDeployments();
+	if (deployments == NULL) {
 		fprintf(stderr, "Failed to get deployments\n");
 		goto error;
 	}
 
-	Deployment *current_group = NULL;
+	Deployment *current_deployment = NULL;
 	if (deployment_name == NULL) {
-		current_group = getDefaultDeployment();
+		current_deployment = getDefaultDeployment();
 	} else {
-		for (int i = 0; groups[i] != NULL; i++) {
-			if (strcmp(groups[i]->name, deployment_name) == 0) {
-				current_group = groups[i];
+		for (int i = 0; deployments[i] != NULL; i++) {
+			if (strcmp(deployments[i]->name, deployment_name) == 0) {
+				current_deployment = deployments[i];
 				break;
 			}
 		}
-		if (current_group == NULL) {
+		if (current_deployment == NULL) {
 			fprintf(stderr, "Deployment '%s' not found\n", deployment_name);
 			goto error;
 		}
 	}
 
-	if (current_group->entries == NULL) {
+	if (current_deployment->items == NULL) {
 		fprintf(stderr, "Failed to get configuration\n");
 		goto error;
 	}
 
 	if (command == CommandPrint)
 		printf("[\n");
-	for (int i = 0;; i += 1) {
-		Entry *entrydeployment = current_group->entries[i];
-		if (entrydeployment == NULL) {
-			break;
+	for (int i = 0; current_deployment->items[i] != NULL; i += 1) {
+		Item *outer = current_deployment->items[i];
+
+		Item **items;
+		int count;
+
+		if (outer->type == TYPE_GROUP) {
+			items = outer->entries;
+			for (count = 0; items[count] != NULL; count++)
+				;
+		} else {
+			items = &outer;
+			count = 1;
 		}
 
-		for (int j = 0;; j += 1) {
-			Entry entry = entrydeployment[j];
-			if (entry.source == NULL && entry.destination == NULL) {
-				break;
-			}
+		for (int j = 0; j < count; j += 1) {
+			Item *item = items[j];
+			bool last = (j == count - 1) && current_deployment->items[i + 1] == NULL;
 
 			if (command == CommandPrint) {
-				printf("\t{ \"source\": \"%s\", \"destination\": \"%s\" }", entry.source, entry.destination);
-				if (current_group->entries[i + 1] == NULL) {
-					printf("\n");
-				} else {
-					printf(",\n");
-				}
+				printf("\t{ \"source\": \"%s\", \"destination\": \"%s\" }", item->source, item->destination);
+				printf(last ? "\n" : ",\n");
 				continue;
 			}
 
-			char *home = getenv("HOME");
-			if (home == NULL) {
-				perror("getenv");
-				goto error;
-			}
 			if (command == CommandDeploy) {
 				char source_path[PATH_MAX];
 				char destination_path[PATH_MAX];
-				snprintf(source_path, PATH_MAX, "%s", entry.source);
-				snprintf(destination_path, PATH_MAX, "%s", entry.destination);
+				snprintf(source_path, PATH_MAX, "%s", item->source);
+				snprintf(destination_path, PATH_MAX, "%s", item->destination);
 				deploy(source_path, destination_path, is_debug, is_dry_run);
 			} else if (command == CommandUndeploy) {
 				char source_path[PATH_MAX];
 				char destination_path[PATH_MAX];
-				snprintf(source_path, PATH_MAX, "%s", entry.source);
-				snprintf(destination_path, PATH_MAX, "%s", entry.destination);
+				snprintf(source_path, PATH_MAX, "%s", item->source);
+				snprintf(destination_path, PATH_MAX, "%s", item->destination);
 				if (destination_path[strlen(destination_path) - 1] == '/') {
 					destination_path[strlen(destination_path) - 1] = '\0';
 				}

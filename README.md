@@ -33,70 +33,93 @@ ln -s "$PWD/d" "$HOME/.local/bin/d"
 Your `CONFIG_FILE` (see `Bakefile.sh`) should point to a `dotfiles.c` that looks something like:
 
 ```c
-struct Group {
-	char const *name;
-	struct Entry **entries;
-};
-struct Entry {
+typedef enum {
+	TYPE_ENTRY = 0,
+	TYPE_GROUP = 1,
+} ItemType;
+
+typedef struct Item {
+	int type;
+	// Entry.
 	char const *category;
 	char const *source;
 	char const *destination;
-};
+	// Group.
+	struct Item **entries;
+} Item;
+
+typedef struct Deployment {
+	char const *name;
+	Item **items;
+} Deployment;
+
 #define Done { .source = NULL, .destination = NULL }
 #define Home CONFIG_HOME
 
-// Each application corresponds to an "entry".
-static struct Entry bash[] = {
+// Each program has one or more entries.
+static Item bash[] = {
 	{
+		.type = TYPE_ENTRY,
 		.source = Home "/.dotfiles/.bashrc",
 		.destination = Home "/.bashrc"
 	},
 	{
+		.type = TYPE_ENTRY,
 		.source = Home "/.dotfiles/.bash_login",
 		.destination = Home "/.bash_login"
 	},
 	Done
 };
-static struct Entry zsh[] = {
+static Item zsh[] = {
 	{
+		.type = TYPE_ENTRY,
 		.source = Home "/.dotfiles/.zshrc",
 		.destination = Home "/.zshrc"
 	},
 	Done
 };
 
-// Group entries that should be deployed together.
-static struct Group group1 = {
-	.name = "Linux desktop",
-	.entries = (struct Entry *[]){
+// It's possible to deploy a group of applications as a single unit.
+static Item shellsForServersGroup = {
+	.type = TYPE_GROUP,
+	.entries = (Item *[]){
 		bash,
-		zsh
-		NULL
-	}
-};
-static struct Group group2 = {
-	.name = "Linux laptop",
-	.entries = (struct Entry *[]){
 		zsh,
 		NULL
 	}
 };
 
-// Finally, list all groups and configure a default group.
-static struct Group** groups = (struct Group *[]){
-	&group1,
-	&group2,
+// List all items for each deployment.
+static Deployment deployment1 = {
+	.name = "Linux desktop",
+	.items = (Item *[]){
+		&shellsForServersGroup,
+		NULL
+	}
+};
+static Deployment deployment2 = {
+	.name = "Linux laptop",
+	.items = (Item *[]){
+		zsh,
+		NULL
+	}
+};
+
+// List all deployments and configure a default.
+static Deployment **deployments = (Deployment *[]){
+	&deployment1,
+	&deployment2,
 	NULL
 };
-struct Group **getGroups() {
-	return groups;
+Deployment **getDeployments() {
+	return deployments;
 }
-struct Group *getDefaultGroup() {
-	return &group2;
+Deployment *getDefaultDeployment() {
+	return &deployment2;
 }
 ```
 
-In summary, each dotfile entry corresponds to some application and can have multiple dotfile files or directories. Then, group them by how you would like to deploy them. You must write `getGroups()` and `getDefaultGroup()` so `d` can see and use the groups that you have.
+In summary, each item corresponds to some application and can have multiple dotfile files or directories. Items can be grouped together using a group item, or listed directly under a deployment. You must write `getDeployments()` and `getDefaultDeployment()` so `d` can see and use the deployments that you have.
 
 The really cool part about this, is that you can use macros! This is your chance to be creative! See
 [my dotfiles.c](https://github.com/hyperupcall/dotfiles/blob/trunk/os-unix/data/dotfiles.c) for inspiration.
