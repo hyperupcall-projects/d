@@ -339,9 +339,21 @@ void deploy(char *source_path, char *destination_path, bool debug, bool dry_run)
 				printf("[DRY RUN] Would create directory: %s\n", dir);
 			} else {
 				printf("Creating directory for: %s\n", dir);
-				if (mkdir(dir, 0755) == -1) {
-					perror("mkdir");
-					fail("Failed to make directory");
+				for (char *p = dir + 1;; p++) {
+					if (*p == '/' || *p == '\0') {
+						char saved = *p;
+						*p = '\0';
+						if (debug) {
+							printf("mkdir: %s\n", dir);
+						}
+						if (mkdir(dir, 0755) == -1 && errno != EEXIST) {
+							perror("mkdir");
+							fail("Failed to make directory");
+						}
+						if (saved == '\0')
+							break;
+						*p = saved;
+					}
 				}
 			}
 		}
