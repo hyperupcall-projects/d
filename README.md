@@ -4,21 +4,21 @@
 
 ---
 
-A dotfile manager.
+The crazy dotfile manager.
 
 ## Features
 
+- WRITTEN IN C (WORSE IS BETTER IS WORSE IS BETTER)
 - NOT "SUCKLESS" (IF YOURE'RE TRYING TO CONVINCE ME THAT YOUR SOFTWARE "SUCKS LESS",
   THEN IT ACTUALLY SUCKS!)
 - NO "CONFIGURATION FILES" (THE CONCEPT OF "CONFIGURATION FILES" SHOULD NOT
   EXIST!)
-- NO "DOCUMENTATION" (WHAT IS THAT?)
-- NOT WRITTEN IN RUST (NO, I'M NOT INSANE! I LOVE RUST!)
+- IS CRAZY
 
 ## Summary
 
 On a more serious note, `d` is your standard dotfile manager, with the twist that it can be configured using C, hopefully leveraging the ~~cursed~~ amazing C
-preprocessor.
+preprocessor. That's where the "crazy' part comes in.
 
 ### Usage
 
