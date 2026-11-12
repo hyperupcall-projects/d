@@ -7,7 +7,7 @@ typedef enum {
 } ItemType;
 
 typedef struct Item {
-	int type;
+	ItemType type;
 	// For TYPE_ENTRY.
 	char const *category;
 	char const *source;

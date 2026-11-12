@@ -57,6 +57,54 @@ __attribute__((noreturn)) void fail(const char *message) {
 }
 void deploy(char *, char *, bool, bool);
 
+enum Command {
+	CommandNone,
+	CommandDeploy,
+	CommandUndeploy,
+	CommandPrint,
+};
+
+// Applies a single leaf Item to the requested command.
+static void processItem(
+    Item *item, enum Command command, bool is_debug, bool is_dry_run, bool *is_first
+) {
+	if (command == CommandPrint) {
+		if (!*is_first)
+			printf(",\n");
+		printf("\t{ \"source\": \"%s\", \"destination\": \"%s\" }", item->source, item->destination);
+		*is_first = false;
+		return;
+	}
+
+	char source_path[PATH_MAX];
+	char destination_path[PATH_MAX];
+	snprintf(source_path, PATH_MAX, "%s", item->source);
+	snprintf(destination_path, PATH_MAX, "%s", item->destination);
+
+	if (command == CommandDeploy) {
+		deploy(source_path, destination_path, is_debug, is_dry_run);
+	} else if (command == CommandUndeploy) {
+		if (destination_path[strlen(destination_path) - 1] == '/') {
+			destination_path[strlen(destination_path) - 1] = '\0';
+		}
+		if (is_dry_run) {
+			printf("[DRY RUN] Would unlink: %s\n", destination_path);
+		} else if (unlink(destination_path) == -1 && errno != ENOENT) {
+			fprintf(stderr, "Failed to unlink \"%s\"\n", destination_path);
+			perror("unlink");
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+static void processEntry(
+    Item *entry, enum Command command, bool is_debug, bool is_dry_run, bool *is_first
+) {
+	for (Item *item = entry; item->source != NULL; item += 1) {
+		processItem(item, command, is_debug, is_dry_run, is_first);
+	}
+}
+
 int main(int argc, char *argv[]) {
 	static bool is_debug = false;
 	static bool is_dry_run = false;
@@ -68,12 +116,7 @@ int main(int argc, char *argv[]) {
 	char *help_menu = "d: A dotfile manager.\n"
 	                  "Commands: <deploy[ --deployment=* --dry] | undeploy[ --deployment=* --dry] | print>\n";
 
-	enum Command {
-		CommandNone,
-		CommandDeploy,
-		CommandUndeploy,
-		CommandPrint,
-	} command = CommandNone;
+	enum Command command = CommandNone;
 
 	if (argc < 2) {
 		fprintf(stderr, "%s", help_menu);
@@ -268,65 +311,22 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
+	bool is_first = true;
 	if (command == CommandPrint)
 		printf("[\n");
 	for (int i = 0; current_deployment->items[i] != NULL; i += 1) {
 		Item *outer = current_deployment->items[i];
 
-		Item **items;
-		int count;
-
 		if (outer->type == TYPE_GROUP) {
-			items = outer->entries;
-			for (count = 0; items[count] != NULL; count++)
-				;
+			for (int j = 0; outer->entries[j] != NULL; j += 1) {
+				processEntry(outer->entries[j], command, is_debug, is_dry_run, &is_first);
+			}
 		} else {
-			items = &outer;
-			count = 1;
-		}
-
-		for (int j = 0; j < count; j += 1) {
-			Item *item = items[j];
-			bool last = (j == count - 1) && current_deployment->items[i + 1] == NULL;
-
-			if (command == CommandPrint) {
-				printf("\t{ \"source\": \"%s\", \"destination\": \"%s\" }", item->source, item->destination);
-				printf(last ? "\n" : ",\n");
-				continue;
-			}
-
-			if (command == CommandDeploy) {
-				char source_path[PATH_MAX];
-				char destination_path[PATH_MAX];
-				snprintf(source_path, PATH_MAX, "%s", item->source);
-				snprintf(destination_path, PATH_MAX, "%s", item->destination);
-				deploy(source_path, destination_path, is_debug, is_dry_run);
-			} else if (command == CommandUndeploy) {
-				char source_path[PATH_MAX];
-				char destination_path[PATH_MAX];
-				snprintf(source_path, PATH_MAX, "%s", item->source);
-				snprintf(destination_path, PATH_MAX, "%s", item->destination);
-				if (destination_path[strlen(destination_path) - 1] == '/') {
-					destination_path[strlen(destination_path) - 1] = '\0';
-				}
-				if (is_dry_run) {
-					printf("[DRY RUN] Would unlink: %s\n", destination_path);
-				} else {
-					if (unlink(destination_path) == -1) {
-						if (errno != ENOENT) {
-							fprintf(stderr, "Failed to unlink \"%s\"\n", destination_path);
-							perror("unlink");
-							return EXIT_FAILURE;
-						}
-					}
-				}
-			}
+			processEntry(outer, command, is_debug, is_dry_run, &is_first);
 		}
 	}
 	if (command == CommandPrint)
 		printf("]\n");
-
-	return EXIT_SUCCESS;
 }
 
 void deploy(char *source_path, char *destination_path, bool debug, bool dry_run) {
