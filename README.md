@@ -29,15 +29,18 @@ cd ./d
 ./bake install ~/.local
 ```
 
-Your should have a `dotfiles.c` that looks something like:
+Then, create a `d.h` that looks something like:
 
 ```c
+#include <stdbool.h>
+#include <stddef.h>
+
 typedef enum {
 	TYPE_ENTRY = 0,
 	TYPE_GROUP = 1,
 } ItemType;
 typedef struct Item {
-	int type;
+	ItemType type;
 	// Entry.
 	char const *category;
 	char const *source;
@@ -49,8 +52,15 @@ typedef struct Deployment {
 	char const *name;
 	Item **items;
 } Deployment;
-#define Done { .type = TYPE_ENTRY, .source = NULL, .destination = NULL }
+
 #define Home CONFIG_HOME "/"
+#define Done { .type = TYPE_ENTRY, .source = NULL, .destination = NULL }
+```
+
+Finally, configure your dotfiles in `dotfiles.c`:
+
+```c
+#include "d.h"
 
 // Each program has one or more entries.
 static Item bash[] = {
