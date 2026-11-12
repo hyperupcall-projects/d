@@ -16,8 +16,3 @@ task.install() {
 	sudo mkdir -p "$prefix/bin"
 	sudo cp ./d "$prefix/bin/d"
 }
-
-task.run() {
-	task.build
-	DEBUG=1 ./main "$@"
-}

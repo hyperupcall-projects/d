@@ -8,17 +8,16 @@ The crazy dotfile manager.
 
 ## Features
 
-- WRITTEN IN C (WORSE IS BETTER IS WORSE IS BETTER)
+- WRITTEN IN C (WORSE IS BETTER IS WORSE)
 - NOT "SUCKLESS" (IF YOURE'RE TRYING TO CONVINCE ME THAT YOUR SOFTWARE "SUCKS LESS",
   THEN IT ACTUALLY SUCKS!)
-- NO "CONFIGURATION FILES" (THE CONCEPT OF "CONFIGURATION FILES" SHOULD NOT
-  EXIST!)
+- NO "CONFIGURATION FILES" (THEY SUCK!!)
 - IS CRAZY
 
 ## Summary
 
 On a more serious note, `d` is your standard dotfile manager, with the twist that it can be configured using C, hopefully leveraging the ~~cursed~~ amazing C
-preprocessor. That's where the "crazy' part comes in.
+preprocessor. That's where the "crazy" part comes in.
 
 ### Usage
 
