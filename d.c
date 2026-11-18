@@ -115,13 +115,17 @@ int main(int argc, char *argv[]) {
 
 	char *help_menu = "d: A dotfile manager.\n"
 	                  "Commands: <deploy[ --deployment=* --dry] | undeploy[ --deployment=* --dry] | print>\n"
-	                  "Flags: <--help>\n";
+	                  "Flags: <--help | --version>\n";
 
 	enum Command command = CommandNone;
 
 	for (int i = 1; i < argc; i += 1) {
 		if (strcmp(argv[i], "--help") == 0) {
 			printf("%s", help_menu);
+			return EXIT_SUCCESS;
+		}
+		if (strcmp(argv[i], "--version") == 0) {
+			printf("%s\n", VERSION);
 			return EXIT_SUCCESS;
 		}
 	}

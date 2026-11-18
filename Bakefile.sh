@@ -8,7 +8,13 @@ task.build() {
 	local dir=$1
 	bake.assert_not_empty dir
 
-	bear -- gcc "${CFLAGS[@]}" -DCONFIG_FILE="\"$dir\"" d.c -o ./d
+	local version
+	version=$(git describe --tags --abbrev=0)
+	if [ "$(git rev-parse HEAD)" != "$(git rev-parse "$version^{commit}")" ]; then
+		version+=-dev
+	fi
+
+	bear -- gcc "${CFLAGS[@]}" -DCONFIG_FILE="\"$dir\"" -DVERSION="\"$version\"" d.c -o ./d
 }
 
 task.install() {
