@@ -114,9 +114,17 @@ int main(int argc, char *argv[]) {
 	}
 
 	char *help_menu = "d: A dotfile manager.\n"
-	                  "Commands: <deploy[ --deployment=* --dry] | undeploy[ --deployment=* --dry] | print>\n";
+	                  "Commands: <deploy[ --deployment=* --dry] | undeploy[ --deployment=* --dry] | print>\n"
+	                  "Flags: <--help>\n";
 
 	enum Command command = CommandNone;
+
+	for (int i = 1; i < argc; i += 1) {
+		if (strcmp(argv[i], "--help") == 0) {
+			printf("%s", help_menu);
+			return EXIT_SUCCESS;
+		}
+	}
 
 	if (argc < 2) {
 		fprintf(stderr, "%s", help_menu);
